@@ -1,0 +1,27 @@
+Detection Results:
+
+Frame 0:
+Detections: 1 person
+Emotions: Counter({'neutral': 1})
+AI Response: A single person stands before you, their expression calm and unchanging.
+
+Frame 0:
+Detections: 1 person
+Emotions: Counter({'happy': 1})
+AI Response: A person stands before you, radiating joy and positivity.
+
+Frame 0:
+Detections: 1 person
+Emotions: Counter({'neutral': 1})
+AI Response: A person stands before you, their demeanor calm and expressionless.
+
+Frame 0:
+Detections: 1 person
+Emotions: Counter({'happy': 1})
+AI Response: A person stands before you, smiling and exuding happiness.
+
+Frame 0:
+Detections: 1 person, 1 elephant
+Emotions: Counter({'neutral': 1})
+AI Response: A person and an elephant stand quietly together, both calm and unexpressive.
+

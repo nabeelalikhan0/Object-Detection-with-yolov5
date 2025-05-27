@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLO Camera Detection</title>
+</head>
+<body>
+    <h1>YOLO Camera Detection</h1>
+    <video id="camera" autoplay playsinline></video>
+    <p id="detection-summary">Press SPACE or click "Detect" to detect objects.</p>
+    <p id="ai-response"></p>
+    <button id="detect-btn">Detect</button>
+    <button id="speak-btn" disabled>Speak AI Response</button>
+
+    <form action="" method="post">
+        {% csrf_token %}
+        <label for="input">Communicate to the chatbot:</label>
+        <input type="text" name="input" id="input">
+        <button type="submit">Submit</button>
+    </form>
+
+    <script>
+        const video = document.getElementById("camera");
+        const summaryEl = document.getElementById("detection-summary");
+        const aiResponseEl = document.getElementById("ai-response");
+        const detectBtn = document.getElementById("detect-btn");
+        const speakBtn = document.getElementById("speak-btn");
+
+        // Access the user's camera
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then((stream) => {
+                video.srcObject = stream;
+            })
+            .catch((err) => {
+                console.error("Error accessing camera: ", err);
+            });
+
+        // Function to get the CSRF token from cookies
+        function getCSRFToken() {
+            const cookies = document.cookie.split("; ");
+            for (const cookie of cookies) {
+                const [name, value] = cookie.split("=");
+                if (name === "csrftoken") return value;
+            }
+            return null;
+        }
+
+        // Capture a frame from the video
+        function captureFrame() {
+            const canvas = document.createElement("canvas");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext("2d");
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL("image/jpeg");
+        }
+
+        // Function to send frame to backend for detection
+        async function detectObjects() {
+            const frame = captureFrame();
+            const csrfToken = getCSRFToken();
+
+            if (!csrfToken) {
+                alert("CSRF token not found. Ensure cookies are enabled.");
+                return;
+            }
+
+            const response = await fetch("/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-CSRFToken": csrfToken,
+                },
+                body: `frame=${encodeURIComponent(frame)}`,
+            });
+
+            if (!response.ok) {
+                alert("Failed to perform detection. Check the server logs for details.");
+                return;
+            }
+
+            const data = await response.json();
+            summaryEl.textContent = "Detections: " + data.summary;
+            aiResponseEl.textContent = "AI Response: " + data.ai_response;
+            speakBtn.disabled = false;
+        }
+
+        // Attach event listeners
+        detectBtn.addEventListener("click", detectObjects);
+
+        document.addEventListener("keydown", (event) => {
+            if (event.code === "Space") {
+                detectObjects();
+            }
+        });
+
+        speakBtn.addEventListener("click", () => {
+            const msg = new SpeechSynthesisUtterance(aiResponseEl.textContent.replace("AI Response: ", ""));
+            window.speechSynthesis.speak(msg);
+        });
+    </script>
+</body>
+</html>
