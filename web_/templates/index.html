@@ -1,104 +1,242 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YOLO Camera Detection</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YOLO + Voice Chatbot</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f4f4f8;
+      color: #333;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #2c3e50;
+    }
+
+    #camera {
+      display: block;
+      margin: 0 auto;
+      border: 6px solid #2c3e50;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 640px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    p, label {
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+
+    input[type="text"] {
+      width: 70%;
+      padding: 10px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      font-size: 16px;
+      margin-right: 10px;
+    }
+
+    button {
+      background-color: #3498db;
+      color: white;
+      padding: 10px 16px;
+      margin: 5px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 15px;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    #ai-response, #detection-summary, #output {
+      font-weight: bold;
+      font-size: 18px;
+      padding: 10px;
+      background: #ecf0f1;
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+
+    #output {
+      font-style: italic;
+      font-size: 16px;
+    }
+  </style>
 </head>
 <body>
-    <h1>YOLO Camera Detection</h1>
+  <h1>YOLO Camera Detection + Voice Chatbot</h1>
+
+  <div class="container">
     <video id="camera" autoplay playsinline></video>
+
     <p id="detection-summary">Press SPACE or click "Detect" to detect objects.</p>
-    <p id="ai-response"></p>
-    <button id="detect-btn">Detect</button>
-    <button id="speak-btn" disabled>Speak AI Response</button>
+    <p id="ai-response">{{ ai_response|default:"AI Response: " }}</p>
 
-    <form action="" method="post">
-        {% csrf_token %}
-        <label for="input">Communicate to the chatbot:</label>
-        <input type="text" name="input" id="input">
-        <button type="submit">Submit</button>
-    </form>
+    <div style="margin-top: 20px;">
+      <label for="input">Type a message:</label><br>
+      <input type="text" id="input" placeholder="Type to chat..." />
+      <button id="submitBtn">Submit</button>
+    </div>
 
-    <script>
-        const video = document.getElementById("camera");
-        const summaryEl = document.getElementById("detection-summary");
-        const aiResponseEl = document.getElementById("ai-response");
-        const detectBtn = document.getElementById("detect-btn");
-        const speakBtn = document.getElementById("speak-btn");
+    <div style="margin-top: 10px;">
+      <button id="detect-btn">Detect</button>
+      <button id="speak-btn" disabled>Speak AI Response</button>
+      <button id="startBtn">🎤 Start Voice</button>
+    </div>
 
-        // Access the user's camera
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then((stream) => {
-                video.srcObject = stream;
-            })
-            .catch((err) => {
-                console.error("Error accessing camera: ", err);
-            });
+    <p><strong>Transcript:</strong> <span id="output"></span></p>
+  </div>
 
-        // Function to get the CSRF token from cookies
-        function getCSRFToken() {
-            const cookies = document.cookie.split("; ");
-            for (const cookie of cookies) {
-                const [name, value] = cookie.split("=");
-                if (name === "csrftoken") return value;
-            }
-            return null;
-        }
+  <script>
+    const video = document.getElementById("camera");
+    const summaryEl = document.getElementById("detection-summary");
+    const aiResponseEl = document.getElementById("ai-response");
+    const speakBtn = document.getElementById("speak-btn");
+    const submitBtn = document.getElementById("submitBtn");
+    const inputEl = document.getElementById("input");
 
-        // Capture a frame from the video
-        function captureFrame() {
-            const canvas = document.createElement("canvas");
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const context = canvas.getContext("2d");
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            return canvas.toDataURL("image/jpeg");
-        }
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        video.srcObject = stream;
+      })
+      .catch(err => {
+        console.error("Camera error:", err);
+      });
 
-        // Function to send frame to backend for detection
-        async function detectObjects() {
-            const frame = captureFrame();
-            const csrfToken = getCSRFToken();
+    function getCSRFToken() {
+      const cookies = document.cookie.split("; ");
+      for (const cookie of cookies) {
+        const [name, value] = cookie.split("=");
+        if (name === "csrftoken") return value;
+      }
+      return null;
+    }
 
-            if (!csrfToken) {
-                alert("CSRF token not found. Ensure cookies are enabled.");
-                return;
-            }
+    function captureFrame() {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext("2d");
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/jpeg");
+    }
 
-            const response = await fetch("/", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "X-CSRFToken": csrfToken,
-                },
-                body: `frame=${encodeURIComponent(frame)}`,
-            });
+    async function detectObjects() {
+      const frame = captureFrame();
+      const csrfToken = getCSRFToken();
 
-            if (!response.ok) {
-                alert("Failed to perform detection. Check the server logs for details.");
-                return;
-            }
+      const response = await fetch("/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "X-CSRFToken": csrfToken,
+        },
+        body: `frame=${encodeURIComponent(frame)}`
+      });
 
-            const data = await response.json();
-            summaryEl.textContent = "Detections: " + data.summary;
-            aiResponseEl.textContent = "AI Response: " + data.ai_response;
-            speakBtn.disabled = false;
-        }
+      const data = await response.json();
+      summaryEl.textContent = "Detections: " + data.summary;
+      aiResponseEl.textContent = data.ai_response;
+      speakBtn.disabled = false;
+    }
 
-        // Attach event listeners
-        detectBtn.addEventListener("click", detectObjects);
+    document.getElementById("detect-btn").addEventListener("click", detectObjects);
+    document.addEventListener("keydown", (event) => {
+      if (event.code === "Space") detectObjects();
+    });
 
-        document.addEventListener("keydown", (event) => {
-            if (event.code === "Space") {
-                detectObjects();
-            }
-        });
+    speakBtn.addEventListener("click", () => {
+      const text = aiResponseEl.textContent.replace("AI Response: ", "");
+      const msg = new SpeechSynthesisUtterance(text);
+      window.speechSynthesis.speak(msg);
+    });
 
-        speakBtn.addEventListener("click", () => {
-            const msg = new SpeechSynthesisUtterance(aiResponseEl.textContent.replace("AI Response: ", ""));
-            window.speechSynthesis.speak(msg);
-        });
-    </script>
+    submitBtn.addEventListener("click", () => {
+      const inputVal = inputEl.value.trim();
+      if (!inputVal) return;
+
+      const csrfToken = getCSRFToken();
+
+      fetch("/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "X-CSRFToken": csrfToken,
+        },
+        body: `input=${encodeURIComponent(inputVal)}`
+      })
+      .then(res => res.text())
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const newResponse = doc.getElementById("ai-response").textContent;
+        aiResponseEl.textContent = newResponse;
+        speakBtn.disabled = false;
+
+        const msg = new SpeechSynthesisUtterance(newResponse.replace("AI Response: ", ""));
+        window.speechSynthesis.speak(msg);
+      });
+
+      inputEl.value = "";
+    });
+
+    const startBtn = document.getElementById("startBtn");
+    const output = document.getElementById("output");
+    const recognition = new webkitSpeechRecognition(); // or SpeechRecognition
+    recognition.continuous = true;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = function(event) {
+      const transcript = event.results[event.results.length - 1][0].transcript;
+      output.textContent += transcript + " ";
+      inputEl.value = transcript;
+
+      const csrfToken = getCSRFToken();
+
+      fetch("/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "X-CSRFToken": csrfToken,
+        },
+        body: `input=${encodeURIComponent(transcript)}`
+      })
+      .then(res => res.text())
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const newResponse = doc.getElementById("ai-response").textContent;
+        aiResponseEl.textContent = newResponse;
+        speakBtn.disabled = false;
+
+        const msg = new SpeechSynthesisUtterance(newResponse.replace("AI Response: ", ""));
+        window.speechSynthesis.speak(msg);
+      });
+    };
+
+    startBtn.onclick = () => {
+      recognition.start();
+      startBtn.innerText = "🎤 Listening...";
+    };
+  </script>
 </body>
 </html>

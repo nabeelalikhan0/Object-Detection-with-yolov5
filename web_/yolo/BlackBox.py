@@ -16,7 +16,8 @@ def BlackBoxAI(query):
             elem.clear()
             elem.send_keys(query)
             elem.send_keys(Keys.RETURN)
-            sleep(10)
+            sleep(4)
+            # sleep(10)
             answer = WebDriverWait(driver, 10).until(
                 EC.presence_of_all_elements_located((By.CLASS_NAME, "prose"))
             )
