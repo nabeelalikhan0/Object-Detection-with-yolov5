@@ -1,7 +1,8 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from ultralytics import YOLO
-from .BlackBox import BlackBoxAI
+# from .BlackBox import BlackBoxAI
+from .Gemini import Gemini
 from collections import Counter
 import cv2
 import numpy as np
@@ -21,7 +22,8 @@ def index(request):
         # 🧠 Handle text or voice input
         if user_reply:
             print(f"[User Input] {user_reply}")
-            ai_response = f"AI Response: {BlackBoxAI(user_reply)}"
+            ai_response = f"AI Response: {Gemini(user_reply)}"
+            print(ai_response)
             return render(request, "index.html", {"ai_response": ai_response})
 
         # 📸 Handle camera object detection
@@ -49,7 +51,8 @@ def index(request):
 
                 # Prompt for scene explanation
                 prompt = f"Explain this scene to a blind person: there are {summary_text} in front of you. Use as few words as possible."
-                ai_response = f"AI Response: {BlackBoxAI(prompt)}"
+                ai_response = f"AI Response: {Gemini(prompt)}"
+                print(ai_response)
 
                 return JsonResponse({"summary": summary_text, "ai_response": ai_response})
 
